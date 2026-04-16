@@ -14,6 +14,7 @@ Course project: an autonomous robot that learns an unknown maze, then computes a
 | **Web UI** (log viewer) | `Bluetooth stuff/log-viewer/` |
 | **BLE helper scripts** | `Bluetooth stuff/ble_log_receiver.py`, `Bluetooth stuff/ble_scan.py` — root `Bluetooth stuff/requirements.txt` for lightweight deps |
 | **Bill of materials** | `component_list(1).xlsx` |
+| **Software architecture** (diagram) | `system_architecture.png` |
 | **PCB schematic** (exported image) | `PCB Schematic.png` |
 | **Team details** | [`team.md`](team.md) |
 | **3D / mechanical design** | `3d design/` (Fusion 360 `.f3z`) |
