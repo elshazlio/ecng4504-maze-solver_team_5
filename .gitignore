@@ -31,3 +31,22 @@ left_turn_test
 left_turn_regression_test.review
 close_left_regression_test
 tests/test_working_code_logic
+
+# --- Local / engineering-only (keep on disk; not published on GitHub) ---
+.cursor/
+docs/
+tests/
+
+# Alternate firmware copies and host-side regression sources
+reference_code_dont_touch.ino
+mina_final_code.ino
+close_left_regression_test.cpp
+left_turn_regression_test.cpp
+
+# Extra diagrams / dev notes not in the published deliverable set
+Architecture Diagram Only.docx
+Maze.png
+DEV-SERVERS.md
+
+# Redundant zip (same Fusion archive as `3d design/chasis.f3z`)
+3d design-20260416T210406Z-3-001.zip

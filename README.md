@@ -3,39 +3,43 @@
 **American University in Cairo · School of Sciences and Engineering**  
 **ECNG 4504 — Embedded Systems for Wireless Communications · Spring 2026**
 
-Course project: an **autonomous robotic vehicle** that **learns** an unknown maze during training (internal map), then **computes and executes an optimal path** to solve it. The PC talks to the robot over **BLE**; a **Python** application issues training/solve commands, receives status and paths, and supports visualization and logging—per the official **[project charter](docs/project_description.md)**.
+Course project: an autonomous robot that learns an unknown maze, then computes and executes a path. A PC application talks to the vehicle over **BLE**; **Python** (FastAPI) and a small **web** UI support commands, logging, and visualization.
 
-## Repository layout (submission-oriented)
+## What is in this repository
 
-| Charter expectation | Where it lives in this repo |
-|---------------------|-----------------------------|
-| **MCU code** (C/C++) | Arduino sketches at repo root (e.g. `working_code.ino`, `mina_final_code.ino`, `probably_final_code.ino`, `reference_code_dont_touch.ino`) and related material under `tests/` |
-| **Python host application** | `Bluetooth stuff/maze_dashboard/` (FastAPI + WebSockets + BLE), helpers such as `ble_discover.py` |
-| **HM-10 / UART log viewer (optional tooling)** | `Bluetooth stuff/log-viewer/` (Bun) |
-| **Architecture & hardware documentation** | `docs/`, diagrams such as `Architecture Diagram Only.docx`, `PCB Schematic.png`, assets under `3d design/`, `Maze.png`, `component_list(1).xlsx` |
-| **Team / course metadata** | `team.txt` (names, IDs, emails, team number per charter) |
-| **Decision history (engineering notes)** | `docs/agdr/` |
+| Deliverable | Location |
+|-------------|----------|
+| **MCU firmware** (final) | `working_code.ino` |
+| **Backend** (FastAPI, BLE) | `Bluetooth stuff/maze_dashboard/` |
+| **Web UI** (log viewer) | `Bluetooth stuff/log-viewer/` |
+| **BLE helper scripts** | `Bluetooth stuff/ble_log_receiver.py`, `Bluetooth stuff/ble_scan.py` — root `Bluetooth stuff/requirements.txt` for lightweight deps |
+| **Bill of materials** | `component_list(1).xlsx` |
+| **PCB schematic** (exported image) | `PCB Schematic.png` |
+| **Team details** | `team.txt` |
+| **3D / mechanical design** | `3d design/` (Fusion 360 `.f3z`) |
 
-**How this maps to Phase 0 / 1 / 2 GitHub deliverables** (MCU, Python, KiCAD updates, etc.) is summarized in **[docs/GITHUB_DELIVERABLES.md](docs/GITHUB_DELIVERABLES.md)**.
+### KiCAD source files
 
-## Run the PC-side apps locally
+The **schematic screenshot** above is included for submission. There are **no** KiCAD project files (`.kicad_pro`, `.kicad_sch`, `.kicad_pcb`) in this tree yet. When you add them, place them under a clear folder (for example `hardware/kicad/`) and commit so reviewers can open the project in KiCAD.
 
-See **[DEV-SERVERS.md](DEV-SERVERS.md)** for copy-paste commands (log viewer + maze dashboard).
+## Run the PC applications locally
 
-## Clone & setup
-
-```bash
-git clone https://github.com/elshazlio/ecng4504-maze-solver.git
-cd ecng4504-maze-solver
-```
-
-Create the Python venv for the dashboard (once):
+**Maze dashboard (Python)**
 
 ```bash
 cd "Bluetooth stuff/maze_dashboard"
 python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
+uvicorn app:app --reload --host 127.0.0.1 --port 8000
+```
+
+**Log viewer (see `Bluetooth stuff/log-viewer/package.json` for scripts)**
+
+```bash
+cd "Bluetooth stuff/log-viewer"
+bun install
+bun run serve
 ```
 
 ---
 
-*Repository name on GitHub: **ecng4504-maze-solver** — ECNG 4504 maze **learning** + **solving** as defined in the course charter.*
+*Repository: **ecng4504-maze-solver** — maze learning and solving per the course charter.*
