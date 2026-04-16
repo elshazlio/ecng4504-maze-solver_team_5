@@ -13,9 +13,9 @@ Course project: an autonomous robot that learns an unknown maze, then computes a
 | **Backend** (FastAPI, BLE) | `Bluetooth stuff/maze_dashboard/` |
 | **Web UI** (log viewer) | `Bluetooth stuff/log-viewer/` |
 | **BLE helper scripts** | `Bluetooth stuff/ble_log_receiver.py`, `Bluetooth stuff/ble_scan.py` — root `Bluetooth stuff/requirements.txt` for lightweight deps |
-| **Bill of materials** | `component_list.xlsx` |
+| **Bill of materials** | `component_list(1).xlsx` |
 | **PCB schematic** (exported image) | `PCB Schematic.png` |
-| **Team details** | `team.md` |
+| **Team details** | [`team.md`](team.md) |
 | **3D / mechanical design** | `3d design/` (Fusion 360 `.f3z`) |
 
 ### KiCAD source files
@@ -29,7 +29,7 @@ The **schematic screenshot** above is included for submission. There are **no** 
 ```bash
 cd "Bluetooth stuff/maze_dashboard"
 python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
-uvicorn app:app --reload --host 127.0.0.1 --port 8000
+uvicorn app:app --reload --host 127.0.0.1 --port 8765
 ```
 
 **Log viewer (see `Bluetooth stuff/log-viewer/package.json` for scripts)**

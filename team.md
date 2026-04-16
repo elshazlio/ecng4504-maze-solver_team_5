@@ -1,39 +1,37 @@
 # Team 5 — ECNG 4504
 
-**Embedded Systems for Wireless Communications · Spring 2026**  
-American University in Cairo · School of Sciences and Engineering
+**Course:** Embedded Systems for Wireless Communications · Spring 2026  
+**Institution:** American University in Cairo · School of Sciences and Engineering
 
----
+## Members
 
-## Team members
-
-| Name | Student ID | Email |
-|------|------------|--------|
+| Name | ID | Email |
+|------|-----|--------|
 | Abanoub Emad Said Kamel | 900201630 | [abanoubemad@aucegypt.edu](mailto:abanoubemad@aucegypt.edu) |
 | John Kamal | 900212208 | [johnk.kamal@aucegypt.edu](mailto:johnk.kamal@aucegypt.edu) |
-| Mina Yasser Gerges | 900214039 | [minayasser@aucegypt.edu](mailto:minayasser@aucegypt.edu) |
-| Omar ElShazli | 900201477 | [elshazlio@aucegypt.edu](mailto:elshazlio@aucegypt.edu) |
+| Mina Yasser Gerges | 900214039 | [Minayasser@aucegypt.edu](mailto:Minayasser@aucegypt.edu) |
+| Omar ElShazli | 900201477 | [Elshazlio@aucegypt.edu](mailto:Elshazlio@aucegypt.edu) |
 
 ---
 
-## About this project (repository contents)
+## Contributions (aligned with this repository)
 
-This repository is the **Team 5** submission for an **autonomous maze-learning and maze-solving** robot.
+### Mina Yasser Gerges
 
-### On-vehicle software
+Led the **on-robot firmware** in `working_code.ino`: maze **training** and **solving** behavior (map build, optimal path execution, left-hand-rule navigation), sensor and motion tuning, and calibration for reliable runs. Integrated **BLE (HM-10)** with the main control flow and supported **robot-side** wireless testing so the PC tools could drive and monitor the vehicle end-to-end.
 
-- **`working_code.ino`** — Arduino sketch for an **Arduino Mega** driving a **differential** motor pair, reading **five reflective line sensors**, and maintaining **training** and **solving** logic (internal path records, junction handling, EEPROM-backed checkpoints where implemented). A **Bluetooth serial** link (**Serial1**, typical HC-05-style module) connects the robot to a laptop at **9600 baud** (USB debug at **115200**).
+### Abanoub Emad Said Kamel
 
-### PC software
+Led **hardware**: component selection and the **bill of materials** (`component_list(1).xlsx`), wiring, and motor/sensor interfacing. Prepared the **schematic** (exported as `PCB Schematic.png` in this repo). Contributed to **embedded software** alongside the team: MCU structure, line following, junction / turn handling, and merging software modules into a coherent sketch.
 
-- **`Bluetooth stuff/maze_dashboard/`** — **Python** host: **FastAPI** application for commands, status, and BLE interaction with the robot during runs.
-- **`Bluetooth stuff/log-viewer/`** — Small **web** front end (Bun) for viewing and working with UART/BLE logs from the HM-10 style workflow.
-- **`Bluetooth stuff/ble_log_receiver.py`**, **`ble_scan.py`**, and **`Bluetooth stuff/requirements.txt`** — Lightweight helpers and dependencies for BLE discovery and logging.
+### John Kamal & Omar ElShazli
 
-### Hardware and mechanical documentation
+Led **host-side software** over **BLE** to the robot:
 
-- **`component_list.xlsx`** — Bill of materials / component list.
-- **`PCB Schematic.png`** — Exported **schematic** image (KiCAD native project files are not included in this tree; only this image is submitted here).
-- **`3d design/chasis.f3z`** — **Fusion 360** chassis / mechanical design archive.
+- **`Bluetooth stuff/maze_dashboard/`** — **FastAPI** application with **WebSockets**, **Bleak**-based BLE (Nordic UART / HM-10-style UART), command and status exchange, path and run data from the firmware, and a browser UI served from the same stack.
+- **`Bluetooth stuff/log-viewer/`** — Bun-based **web** log viewer wired to **`ble_log_receiver.py`** for UART/BLE log streaming and debugging.
+- Supporting scripts such as **`ble_discover.py`**, **`ble_log_receiver.py`**, and **`ble_scan.py`**, plus reliability testing of the wireless link with the vehicle.
 
-For setup commands and paths, see the root **`README.md`**.
+---
+
+*Repository deliverables (firmware, PC apps, BOM, schematic image, mechanical CAD) are listed in [`README.md`](README.md).*
