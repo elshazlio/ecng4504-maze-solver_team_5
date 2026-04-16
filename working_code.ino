@@ -46,7 +46,6 @@ const unsigned long DEAD_END_PROBE_MS     = 150;
 
 const unsigned long LOST_LINE_TIMEOUT_MS  = 180;
 
-// Suppress training dead-end recovery briefly after any junction/forced probe (line reacquire gap).
 const unsigned long DEAD_END_GRACE_AFTER_NODE_MS = 480;
 const unsigned long TURN_TIMEOUT_MS       = 1000;
 const unsigned long UTURN_TIMEOUT_MS      = 1500;
@@ -56,7 +55,6 @@ const unsigned long ALIGN_STABLE_MS       = 40;
 const unsigned long POST_TURN_FORWARD_MS  = 60;
 const unsigned long POST_TURN_SETTLE_MS   = 20;
 
-// Training record: burst samples + deferred resolve (motion unchanged — first sample = old single read)
 const uint8_t PROBE_BURST_N        = 12;
 const uint8_t MAX_EXIT_CANDIDATES  = 32;
 const unsigned long RECORD_RESOLVE_MS = 220;
@@ -64,11 +62,7 @@ const unsigned long RECORD_RESOLVE_MS = 220;
 // ===================== STORAGE =====================
 const int MAX_NODES = 200;
 
-// raw training decisions (real junction decisions only)
-// L = chose left at real intersection
-// S = chose straight at real intersection
-// R = chose right at real intersection
-// B = dead end / U-turn
+// rawPath: L/S/R at junctions; B = dead end / U-turn
 char rawPath[MAX_NODES + 1];
 char optimalPath[MAX_NODES + 1];
 
@@ -84,7 +78,6 @@ int rawPathLen = 0;
 int optimalPathLen = 0;
 int solveStepIndex = 0;
 
-// Deferred training junction record (dynamic exit mask resolution)
 bool pendingTrainingRecord = false;
 unsigned int pendingSegMs = 0;
 char pendingTurn = 0;
@@ -534,7 +527,6 @@ bool isPerfectCenterPattern()
          !sensors.v[4];
 }
 
-// candidate node = maybe intersection / cross / finish region
 bool nodeCandidateNow()
 {
   if (sensors.allBlack) return true;
