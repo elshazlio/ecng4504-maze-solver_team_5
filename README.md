@@ -128,4 +128,4 @@ bun run serve
 
 ---
 
-*Course project repository: **ecng4504-maze-solver** — maze learning and solving per the ECNG 4504 charter.*
+*Course project repository: **ecng4504-maze-solver_team_5** — maze learning and solving per the ECNG 4504 charter.*
