@@ -114,7 +114,7 @@ uvicorn app:app --reload --host 127.0.0.1 --port 8765
 
 After a successful connection, you can use `export MAZE_BT_SERIAL=last` to reuse `bt_serial_last.json` beside `app.py`. Leave `MAZE_BT_SERIAL` unset to use **BLE** (HM-10) with Bleak as before.
 
-**Path preview (SVG map):** The dashboard builds a **turtle-geometry** polyline from path strings and from **training/solve** turn lines in the log (`FORCED_TURN`, `SOLVE_FORCED_TURN`, `SOLVE_NODE`, etc.). The preview appends **one grid segment after the last logged turn** so the **final leg** and **forced** corridor exits show the same corners you see on the track; that step is **visualization-only** and does not change what the robot records or executes. Regression checks for this live in `Bluetooth stuff/maze_dashboard/test_map_visualization.py` (run with `python -m unittest` from that folder, using the project venv).
+**Path preview (SVG map):** The dashboard builds a **turtle-geometry** polyline from path strings and from **training/solve** turn lines in the log (`FORCED_TURN`, `SOLVE_FORCED_TURN`, `SOLVE_NODE`, etc.). The preview appends **one grid segment after the last logged turn** so the **final leg** and **forced** corridor exits show the same corners you see on the track; that step is **visualization-only** and does not change what the robot records or executes. Optional **local-only** regression tests for the map (not published on GitHub) may exist under `Bluetooth stuff/maze_dashboard/`; if you have them, run with `python -m unittest` in that folder using the project venv.
 
 **Log viewer** (see `Bluetooth stuff/log-viewer/package.json` for scripts)
 
