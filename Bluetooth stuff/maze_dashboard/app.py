@@ -33,6 +33,7 @@ import json
 import os
 import re
 import uuid
+from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -303,6 +304,50 @@ def path_to_visual_polyline(path: str) -> list[tuple[float, float]]:
     return pts
 
 
+def shortest_path_polyline(pts: list[tuple[float, float]]) -> list[tuple[float, float]]:
+    """
+    Collapse an explored walk into the simple start-to-finish route through its visited grid graph.
+
+    This matches the dashboard's physical-optimal preview for the course maze, which is expected to
+    behave like a tree/perfect maze once training has explored the dead-end branches.
+    """
+    if len(pts) < 2:
+        return list(pts)
+
+    graph: dict[tuple[float, float], set[tuple[float, float]]] = {}
+    for a, b in zip(pts, pts[1:]):
+        if a == b:
+            continue
+        graph.setdefault(a, set()).add(b)
+        graph.setdefault(b, set()).add(a)
+
+    start = pts[0]
+    finish = pts[-1]
+    q: deque[tuple[float, float]] = deque([start])
+    prev: dict[tuple[float, float], tuple[float, float] | None] = {start: None}
+
+    while q:
+        cur = q.popleft()
+        if cur == finish:
+            break
+        for nxt in sorted(graph.get(cur, ())):
+            if nxt in prev:
+                continue
+            prev[nxt] = cur
+            q.append(nxt)
+
+    if finish not in prev:
+        return list(pts)
+
+    out: list[tuple[float, float]] = []
+    cur: tuple[float, float] | None = finish
+    while cur is not None:
+        out.append(cur)
+        cur = prev[cur]
+    out.reverse()
+    return out
+
+
 # working_code.ino prints STATE: <name>; legacy firmware used STATUS:PHASE:detail.
 _ROBOT_STATE_TO_PHASE: dict[str, str] = {
     "IDLE_WAIT_CMD": "IDLE",
@@ -388,6 +433,8 @@ class DashboardState:
     training_turns: list[str] = field(default_factory=list)
     # Chronological L/S/R/B from every junction (intersection + forced); matches physical path.
     training_geo_path: str = ""
+    # Same length as training_geo_path: "forced" vs "intersection" for map corner markers.
+    training_geo_roles: list[str] = field(default_factory=list)
     solve_geo_path: str = ""
     train_count_intersection: int = 0
     train_count_forced: int = 0
@@ -408,6 +455,7 @@ class DashboardState:
     def reset_training_progress(self) -> None:
         self.training_turns.clear()
         self.training_geo_path = ""
+        self.training_geo_roles.clear()
         self.train_count_intersection = 0
         self.train_count_forced = 0
         self.last_node_index = -1
@@ -417,10 +465,11 @@ class DashboardState:
         self.solve_count_intersection = 0
         self.solve_count_forced = 0
 
-    def append_training_geo(self, turn: str) -> None:
+    def append_training_geo(self, turn: str, *, role: str) -> None:
         t = turn.upper()
         if len(t) == 1 and t in "LSRB":
             self.training_geo_path += t
+            self.training_geo_roles.append(role)
 
     def append_solve_geo(self, turn: str) -> None:
         t = turn.upper()
@@ -437,7 +486,7 @@ class DashboardState:
             self.training_turns.append(turn)
         self.last_node_index = node_index
         if is_new_node:
-            self.append_training_geo(turn)
+            self.append_training_geo(turn, role="intersection")
             self.train_count_intersection += 1
 
     def ingest_line(self, line: str) -> None:
@@ -513,7 +562,7 @@ class DashboardState:
             elif m_node_firmware:
                 self.record_training_turn(int(m_node_firmware.group(1)), m_node_firmware.group(2))
             elif m_forced:
-                self.append_training_geo(m_forced.group(1))
+                self.append_training_geo(m_forced.group(1), role="forced")
                 self.train_count_forced += 1
             elif m_solve_node:
                 self.last_solve_step = int(m_solve_node.group(1))
@@ -532,7 +581,13 @@ class DashboardState:
                 pl = path_to_polyline(seq)
                 if len(pl) >= 2:
                     return pl[-1]
-        if self.phase in ("SOLVING", "ARM_SOLVE", "SOLVING_NODE") and self.path_opt:
+        if self.phase in ("SOLVING", "ARM_SOLVE", "SOLVING_NODE"):
+            if self.solve_geo_path:
+                pl = path_to_polyline(self.solve_geo_path)
+                if len(pl) >= 2:
+                    return pl[-1]
+            if not self.path_opt:
+                return None
             pl = path_to_polyline(self.path_opt)
             if not pl:
                 return None
@@ -546,6 +601,13 @@ class DashboardState:
         # for the visualization when available. After training completes we fall back
         # to the simplified path_raw so old/archived sessions still render something.
         geo_training_seq = self.training_geo_path or "".join(self.training_turns)
+        train_vertex_roles: list[str] = []
+        if self.training_geo_path:
+            train_vertex_roles = list(self.training_geo_roles)
+        elif geo_training_seq:
+            train_vertex_roles = ["intersection"] * len(geo_training_seq)
+        if train_vertex_roles and len(train_vertex_roles) != len(geo_training_seq):
+            train_vertex_roles = []
         if geo_training_seq:
             raw_pl = path_to_visual_polyline(geo_training_seq)
             partial_pl: list[tuple[float, float]] = [] if self.path_raw else raw_pl
@@ -555,8 +617,19 @@ class DashboardState:
         else:
             raw_pl = []
             partial_pl = []
-        opt_pl = path_to_visual_polyline(self.path_opt) if self.path_opt else []
+        opt_pl = []
+        if self.path_opt:
+            if len(raw_pl) >= 2:
+                opt_pl = shortest_path_polyline(raw_pl)
+            else:
+                opt_pl = path_to_visual_polyline(self.path_opt)
         solve_geo_pl = path_to_visual_polyline(self.solve_geo_path) if self.solve_geo_path else []
+        if solve_geo_pl:
+            green_pl = solve_geo_pl
+        elif self.phase in ("TRAINING", "ARM_TRAIN"):
+            green_pl = raw_pl or partial_pl or opt_pl
+        else:
+            green_pl = opt_pl or raw_pl or partial_pl
         mn_x, mn_y, mx_x, mx_y = bounds_of_polylines(raw_pl, opt_pl, partial_pl, solve_geo_pl)
         pad = 2.0
         min_x = mn_x - pad
@@ -578,8 +651,10 @@ class DashboardState:
             "path_opt": self.path_opt,
             "polyline_raw": raw_pl,
             "polyline_opt": opt_pl,
+            "polyline_green": green_pl,
             "polyline_partial_train": partial_pl,
             "polyline_solve_geo": solve_geo_pl,
+            "train_vertex_roles": train_vertex_roles,
             "bounds": {"min_x": min_x, "min_y": min_y, "w": w, "h": h},
             "vehicle": {"x": veh[0], "y": veh[1]} if veh else None,
             "last_node_index": self.last_node_index,
@@ -1728,6 +1803,15 @@ INDEX_HTML = r"""<!DOCTYPE html>
     return d.trim();
   }
 
+  function samePts(a, b) {
+    if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+      if (!Array.isArray(a[i]) || !Array.isArray(b[i])) return false;
+      if (a[i][0] !== b[i][0] || a[i][1] !== b[i][1]) return false;
+    }
+    return true;
+  }
+
   function addEndpointBubblePx(svgEl, px, py, kind) {
     const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
     g.setAttribute("class", "map-endpoint");
@@ -1764,24 +1848,35 @@ INDEX_HTML = r"""<!DOCTYPE html>
     svgEl.appendChild(g);
   }
 
-  function addStartFinishMarkers(svgEl, b, rawPts, optPts, partPts, solveGeoPts) {
-    let startPt = null;
-    let endPt = null;
-    if (solveGeoPts && solveGeoPts.length >= 2) {
-      startPt = solveGeoPts[0];
-      endPt = solveGeoPts[solveGeoPts.length - 1];
-    } else if (optPts.length >= 2) {
-      startPt = optPts[0];
-      endPt = optPts[optPts.length - 1];
-    } else if (rawPts.length >= 2) {
-      startPt = rawPts[0];
-      endPt = rawPts[rawPts.length - 1];
-    } else if (partPts.length >= 2) {
-      startPt = partPts[0];
-      endPt = partPts[partPts.length - 1];
-    } else {
-      return;
+  function addTurnKindMarkers(svgEl, b, rawPts, roles) {
+    if (!roles || !roles.length || !rawPts || rawPts.length < 2) return;
+    for (let i = 0; i < roles.length; i++) {
+      const pi = i + 1;
+      if (pi >= rawPts.length) break;
+      const role = roles[i];
+      const forced = role === "forced";
+      const [px, py] = toSvg(b, rawPts[pi][0], rawPts[pi][1]);
+      const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      g.setAttribute("class", "map-turn-kind");
+      const tip = document.createElementNS("http://www.w3.org/2000/svg", "title");
+      tip.textContent = forced ? "Hard turn (forced segment)" : "Intersection decision";
+      g.appendChild(tip);
+      const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      c.setAttribute("cx", String(px));
+      c.setAttribute("cy", String(py));
+      c.setAttribute("r", forced ? "5" : "4");
+      c.setAttribute("fill", forced ? "#f59e0b" : "#38bdf8");
+      c.setAttribute("stroke", "#0f172a");
+      c.setAttribute("stroke-width", "1.5");
+      g.appendChild(c);
+      svgEl.appendChild(g);
     }
+  }
+
+  function addStartFinishMarkers(svgEl, b, primaryPts) {
+    if (!primaryPts || primaryPts.length < 2) return;
+    const startPt = primaryPts[0];
+    const endPt = primaryPts[primaryPts.length - 1];
     const sp = toSvg(b, startPt[0], startPt[1]);
     const ep = toSvg(b, endPt[0], endPt[1]);
     let sx = sp[0];
@@ -1881,6 +1976,7 @@ INDEX_HTML = r"""<!DOCTYPE html>
     addMapGrid(svgEl, idSuffix);
     const rawPts = data.polyline_raw || [];
     const optPts = data.polyline_opt || [];
+    const greenPts = data.polyline_green || [];
     const partPts = data.polyline_partial_train || [];
     const solveGeoPts = data.polyline_solve_geo || [];
     const phaseU = (data.phase || "").toUpperCase();
@@ -1897,6 +1993,9 @@ INDEX_HTML = r"""<!DOCTYPE html>
       p.setAttribute("stroke-width", "3");
       p.setAttribute("stroke-linecap", "round");
       p.setAttribute("stroke-linejoin", "round");
+      const tip = document.createElementNS("http://www.w3.org/2000/svg", "title");
+      tip.textContent = "Physical route (all segments including hard turns)";
+      p.appendChild(tip);
       svgEl.appendChild(p);
     }
     if (partPts.length >= 2 && (!rawPts.length || data.phase === "TRAINING" || data.phase === "ARM_TRAIN")) {
@@ -1908,7 +2007,8 @@ INDEX_HTML = r"""<!DOCTYPE html>
       p.setAttribute("stroke-dasharray", "6 4");
       svgEl.appendChild(p);
     }
-    if (optPts.length >= 2 && showSolveGeo) {
+    const showOptRef = optPts.length >= 2 && !samePts(optPts, greenPts) && (showSolveGeo || rawPts.length >= 2);
+    if (showOptRef) {
       const ref = document.createElementNS("http://www.w3.org/2000/svg", "path");
       ref.setAttribute("d", polyD(b, optPts));
       ref.setAttribute("fill", "none");
@@ -1919,16 +2019,21 @@ INDEX_HTML = r"""<!DOCTYPE html>
       ref.setAttribute("stroke-linejoin", "round");
       ref.setAttribute("opacity", "0.55");
       const tip = document.createElementNS("http://www.w3.org/2000/svg", "title");
-      tip.textContent = "Optimal path (intersection decisions only)";
+      tip.textContent = "Optimal route preview";
       ref.appendChild(tip);
       svgEl.appendChild(ref);
     }
-    if (showSolveGeo) {
-      appendGreenPath(svgEl, b, solveGeoPts);
-    } else if (optPts.length >= 2) {
-      appendGreenPath(svgEl, b, optPts);
+    if (greenPts.length >= 2) {
+      appendGreenPath(svgEl, b, greenPts);
     }
-    addStartFinishMarkers(svgEl, b, rawPts, optPts, partPts, showSolveGeo ? solveGeoPts : []);
+    if (!showSolveGeo && Array.isArray(data.train_vertex_roles) && data.train_vertex_roles.length) {
+      addTurnKindMarkers(svgEl, b, rawPts, data.train_vertex_roles);
+    }
+    let markerPts = greenPts.length >= 2 ? greenPts : null;
+    if (!markerPts && rawPts.length >= 2) markerPts = rawPts;
+    if (!markerPts && optPts.length >= 2) markerPts = optPts;
+    if (!markerPts && partPts.length >= 2) markerPts = partPts;
+    addStartFinishMarkers(svgEl, b, markerPts);
     if (data.vehicle) {
       const [cx, cy] = toSvg(b, data.vehicle.x, data.vehicle.y);
       const glow = document.createElementNS("http://www.w3.org/2000/svg", "circle");
